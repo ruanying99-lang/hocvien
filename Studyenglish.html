@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Học Tiếng Anh Pro</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%232E7D32'/%3E%3Ctext x='50%25' y='57%25' font-size='40' font-family='Arial, sans-serif' font-weight='bold' fill='white' dominant-baseline='middle' text-anchor='middle'%3EEN%3C/text%3E%3C/svg%3E">
+    <!-- Thư viện đọc file Excel SheetJS -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        /* --- GIAO DIỆN CHUNG --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background-color: #1a252f; 
+            min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px;
+        }
+        .game-container {
+            width: 100%; max-width: 650px; background-color: #F9FBE7; border: 4px solid #8BC34A;  
+            border-radius: 20px; padding: 30px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4); color: #000000; font-size: 1.3rem; 
+        }
+        .menu-title { font-size: 1.8rem; font-weight: bold; text-align: center; margin-bottom: 25px; color: #33691E; }
+        .screen { display: none; }
+        .screen.active { display: block !important; }
+
+        /* --- NÚT BẤM & Ô NHẬP --- */
+        .input-group { width: 100%; display: flex; flex-direction: column; gap: 15px; align-items: center; }
+        .name-input {
+            width: 100%; max-width: 350px; padding: 15px; font-size: 1.4rem; border: 3px solid #8BC34A;
+            border-radius: 10px; text-align: center; outline: none; color: #000000; background-color: #FFFFFF;
+        }
+        .btn {
+            width: 100%; padding: 16px; font-size: 1.3rem; font-weight: bold; color: #000000; background-color: #FFFFFF;
+            border: 3px solid #C5E1A5; border-radius: 12px; cursor: pointer; transition: all 0.2s; margin-bottom: 12px; text-align: center;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        @media (hover: hover) { .btn:hover { background-color: #DCEDC8; transform: translateY(-2px); } }
+        .btn:active { transform: translateY(1px); }
+        .back-btn { background-color: #EEEEEE; border-color: #BDBDBD; margin-top: 15px; }
+
+        /* --- GIAO DIỆN GAMEPLAY --- */
+        .score-board { display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 2px dashed #8BC34A; padding-bottom: 10px; }
+        .question-hint { font-size: 1rem; color: #555; text-align: center; margin-bottom: 5px; font-weight: bold; }
+        .question-box { font-size: 2.3rem; font-weight: bold; text-align: center; margin-bottom: 5px; line-height: 1.4; cursor: pointer; user-select: none; color: #2E7D32; }
+        .pinyin-box { font-size: 1.4rem; text-align: center; color: #616161; margin-bottom: 15px; font-style: italic; }
+        .options-container { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        @media (min-width: 480px) { .options-container { grid-template-columns: 1fr 1fr; } }
+        
+        /* Câu ví dụ */
+        .example-box {
+            background-color: #F1F8E9; border: 2px dashed #8BC34A; padding: 12px; border-radius: 8px;
+            margin-bottom: 15px; font-size: 1.2rem; text-align: center; display: none; line-height: 1.5;
+        }
+        .example-box span.highlight { color: #E53935; font-style: italic; font-weight: bold; }
+
+        /* --- BẢNG NHẬT KÝ --- */
+        .log-section { margin-top: 25px; padding-top: 15px; border-top: 2px dashed #8BC34A; }
+        .log-title { font-size: 1.3rem; font-weight: bold; text-align: center; margin-bottom: 10px; color: #2E7D32; }
+        .log-table { width: 100%; border-collapse: collapse; background-color: #E8F5E9; border-radius: 10px; overflow: hidden; font-size: 1.1rem; }
+        .log-table th, .log-table td { padding: 12px; text-align: center; border: none; }
+        .log-table th { background-color: #C8E6C9; color: #1B5E20; font-weight: bold; }
+        .log-table tr:nth-child(even) { background-color: #C8E6C9; opacity: 0.8; }
+        .log-empty { text-align: center; padding: 15px; color: #81C784; font-style: italic; font-size: 1rem; }
+
+        /* --- SỔ TỪ VỰNG & QUẢN LÝ XÓA --- */
+        .vocab-actions { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn-sm { padding: 8px 12px; font-size: 1rem; margin-bottom: 0; width: auto; flex: 1; }
+        .vocab-list-container { max-height: 320px; overflow-y: auto; margin-bottom: 15px; padding-right: 5px; }
+        .vocab-item {
+            background: #FFFFFF; padding: 12px; border-radius: 8px; margin-bottom: 10px;
+            border-left: 5px solid #8BC34A; font-size: 1.1rem; display: flex; flex-direction: column; align-items: stretch; gap: 10px;
+        }
+        .vocab-item-main { display: flex; align-items: center; gap: 10px; width: 100%; }
+        .vocab-item.status-learned { border-left-color: #4CAF50; }
+        .vocab-details { flex-grow: 1; }
+        .vocab-word-clickable { color: #2E7D32; cursor: pointer; text-decoration: underline; user-select: none; }
+        .vocab-word-clickable:hover { color: #1B5E20; }
+        .status-badge { font-size: 0.8rem; padding: 2px 6px; border-radius: 10px; font-weight: bold; margin-left: 5px; }
+        
+        .vocab-example-subbox {
+            background-color: #F9FBE7; border: 1px dashed #8BC34A; padding: 8px 12px; border-radius: 6px;
+            font-size: 1rem; margin-top: 5px; line-height: 1.4; display: none;
+        }
+
+        /* --- MÀN HÌNH TỔNG KẾT --- */
+        .summary-list { max-height: 300px; overflow-y: auto; margin: 15px 0; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #ddd; }
+        .summary-item { display: flex; align-items: center; gap: 12px; padding: 8px; border-bottom: 1px solid #eee; font-size: 1.1rem; border-radius: 6px; margin-bottom: 4px; }
+
+        /* --- HIỆU ỨNG NHẤP NHÁY --- */
+        @keyframes blink-green { 0%, 100% { background-color: #FFFFFF; } 50% { background-color: #4CAF50; color: white; } }
+        @keyframes blink-red { 0%, 100% { background-color: #FFFFFF; } 50% { background-color: #F44336; color: white; } }
+        .correct-blink { animation: blink-green 0.3s ease-in-out 3; }
+        .wrong-blink { animation: blink-red 0.3s ease-in-out 3; }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        
+        <!-- MÀN HÌNH 1: ĐĂNG NHẬP -->
+        <div id="screen-login" class="screen active">
+            <div class="menu-title">ENGLISH LEARNING GAME PRO</div>
+            <div class="input-group">
+                <input type="text" id="player-name" class="name-input" placeholder="Nhập tên của bạn..." autocomplete="off">
+                <button class="btn" style="background-color: #DCEDC8;" onclick="submitName()">XÁC NHẬN</button>
+            </div>
+        </div>
+
+        <!-- MÀN HÌNH 2: MENU CHÍNH -->
+        <div id="screen-menu" class="screen">
+            <div class="menu-title" id="welcome-text">Hello!</div>
+            <button class="btn" onclick="autoStartSmartGame()">🎮 BẮT ĐẦU CHƠI (50 CÂU)</button>
+            <button class="btn" onclick="showScreen('screen-vocab-options')">📖 SỔ TỪ VỰNG ANH VĂN</button>
+            
+            <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="display: none;" onchange="handleExcelUpload(event)">
+            <button class="btn" style="background-color: #DCEDC8;" onclick="document.getElementById('excel-file-input').click()">📥 NẠP TỪ VỰNG EXCEL</button>
+            
+            <div class="log-section">
+                <div class="log-title">📊 NHẬT KÝ LUYỆN TẬP</div>
+                <table class="log-table">
+                    <thead>
+                        <tr>
+                            <th>Tên</th>
+                            <th>Ngày học</th>
+                            <th>Số từ học</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log-table-body"></tbody>
+                </table>
+                <div id="log-empty-msg" class="log-empty">Chưa có dữ liệu học tập hôm nay.</div>
+            </div>
+        </div>
+
+        <!-- MÀN HÌNH 3: TÙY CHỌN SỔ TỪ VỰNG -->
+        <div id="screen-vocab-options" class="screen">
+            <div class="menu-title">XEM SỔ TỪ VỰNG</div>
+            <button class="btn" onclick="viewVocab('all')">🌐 Tất Cả Từ Vựng</button>
+            <button class="btn" onclick="viewVocab('new')">🆕 Từ Mới</button>
+            <button class="btn" onclick="viewVocab('learned')">✅ Từ Đã Học</button>
+            <button class="btn back-btn" onclick="showScreen('screen-menu')">⬅️ Quay Lại Menu</button>
+        </div>
+
+        <!-- MÀN HÌNH 4: CHI TIẾT SỔ TỪ VỰNG -->
+        <div id="screen-vocab-list" class="screen">
+            <div class="menu-title" id="vocab-list-title">DANH SÁCH TỪ VỰNG</div>
+            <div class="vocab-actions">
+                <button class="btn btn-sm" style="background-color: #C5E1A5;" onclick="toggleSelectAllVocab()">Chọn hết</button>
+                <button class="btn btn-sm" style="background-color: #EF5350; color: white;" onclick="deleteSelectedVocab()">Xóa mục chọn</button>
+                <button class="btn btn-sm" style="background-color: #b71c1c; color: white;" onclick="deleteAllVocabMode()">Xóa tất cả</button>
+            </div>
+            <div class="vocab-list-container" id="vocab-list-content"></div>
+            <button class="btn back-btn" onclick="showScreen('screen-vocab-options')">⬅️ Quay Lại</button>
+        </div>
+
+        <!-- MÀN HÌNH CHỜ -->
+        <div id="screen-loading" class="screen">
+            <div class="loading-text" style="text-align:center; font-weight:bold;">⏳ Hệ thống đang xử lý...</div>
+        </div>
+
+        <!-- MÀN HÌNH 5: GAMEPLAY CHÍNH -->
+        <div id="screen-gameplay" class="screen">
+            <div class="score-board">
+                <div>👤: <span id="display-name" style="color: #558B2F;"></span></div>
+                <div>Câu: <span id="current-q-index" style="color: #0288D1;">0</span>/50</div>
+                <div>🏆: <span id="score" style="color: #E65100;">0</span></div>
+            </div>
+            
+            <div class="question-hint" id="question-type-hint">Nhìn từ vựng đoán nghĩa</div>
+            <div class="question-box" id="question-main" onclick="toggleExampleDisplay()">--</div>
+            <div class="pinyin-box" id="question-sub">(--)</div>
+
+            <!-- Khung hiển thị câu ví dụ -->
+            <div class="example-box" id="example-display-box"></div>
+
+            <div class="options-container" id="options-box"></div>
+            <button class="btn back-btn" onclick="showScreen('screen-menu')" style="margin-top: 20px;">📴 Thoát Game</button>
+        </div>
+
+        <!-- MÀN HÌNH 6: TỔNG KẾT -->
+        <div id="screen-summary" class="screen">
+            <div class="menu-title">KẾT QUẢ VÒNG CHƠI</div>
+            <div style="text-align: center; font-weight: bold; margin-bottom: 10px;" id="summary-score-text">Bạn đạt: 0/50 câu đúng</div>
+            <p style="font-size: 1.1rem; color: #555; text-align: center; margin-bottom: 10px;">💡 Chọn từ để chuyển thành <b>"Từ đã học"</b>:</p>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <button class="btn btn-sm" style="background-color: #DCEDC8;" onclick="selectSummaryAll(true)">Chọn hết</button>
+                <button class="btn btn-sm" style="background-color: #EEEEEE;" onclick="selectSummaryAll(false)">Bỏ chọn hết</button>
+            </div>
+
+            <div class="summary-list" id="summary-list-content"></div>
+            <button class="btn" style="background-color: #4CAF50; color: white;" onclick="submitSummaryChanges()">💾 LƯU TIẾN TRÌNH & VỀ MENU</button>
+        </div>
+
+    </div>
+
+    <script>
+        // Kho dữ liệu mặc định ban đầu cấu trúc 5 cột tiếng Anh
+        let vocabulary = [
+            { word: "Hello", pronunciation: "/həˈloʊ/", type: "interjection", definition: "Xin chào", example: "Hello! How are you?", learned: false },
+            { word: "Book", pronunciation: "/bʊk/", type: "noun", definition: "Quyển sách", example: "I am reading a good book.", learned: false },
+            { word: "Beautiful", pronunciation: "/ˈbjuːtɪfl/", type: "adjective", definition: "Xinh đẹp", example: "She is a beautiful girl.", learned: false },
+            { word: "Run", pronunciation: "/rʌn/", type: "verb", definition: "Chạy", example: "He can run very fast.", learned: false },
+            { word: "Quickly", pronunciation: "/ˈkwɪkli/", type: "adverb", definition: "Một cách nhanh chóng", example: "Please finish your homework quickly.", learned: false }
+        ];
+
+        let studyLogs = [];
+        let currentPlayerName = "Người chơi";
+        let gameQuestions = [];  
+        let currentQuestionIndex = 0;
+        let currentScore = 0;
+        let currentCorrectWord = null; 
+        let currentQType = 1; 
+        let playedWordsInTurn = []; 
+        let currentVocabViewMode = 'all';
+        let wordPerformanceTracker = {};
+
+        // --- ĐỒNG BỘ LOCALSTORAGE ---
+        function saveDataToStorage() {
+            localStorage.setItem('en_game_vocabulary', JSON.stringify(vocabulary));
+            localStorage.setItem('en_game_study_logs', JSON.stringify(studyLogs));
+        }
+
+        function loadDataFromStorage() {
+            const savedVocab = localStorage.getItem('en_game_vocabulary');
+            const savedLogs = localStorage.getItem('en_game_study_logs');
+            if (savedVocab) { try { vocabulary = JSON.parse(savedVocab); } catch(e) {} }
+            if (savedLogs) { try { studyLogs = JSON.parse(savedLogs); } catch(e) {} }
+        }
+        loadDataFromStorage();
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            const target = document.getElementById(screenId);
+            if (target) target.classList.add('active');
+        }
+
+        function submitName() {
+            const nameField = document.getElementById('player-name');
+            const input = nameField.value.trim();
+            if (input === "") { nameField.style.borderColor = '#F44336'; return; }
+            currentPlayerName = input;
+            document.getElementById('welcome-text').innerText = `Hello, ${input}! 👋`;
+            document.getElementById('display-name').innerText = input;
+            showScreen('screen-menu');
+            renderLogTable();
+        }
+
+        // --- NẠP FILE EXCEL (5 CỘT TIẾNG ANH) ---
+        function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            showScreen('screen-loading');
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(sheet);
+                    if (jsonData.length === 0) { alert("File trống!"); showScreen('screen-menu'); return; }
+                    
+                    let addedCount = 0, duplicateCount = 0;
+                    jsonData.forEach(row => {
+                        const word = String(row.word || row.Word || "").trim();
+                        const pronunciation = String(row.pronunciation || row.Pronunciation || row.phienam || "").trim();
+                        const type = String(row.type || row.Type || row.loaitu || "").trim();
+                        const definition = String(row.definition || row.Definition || row.nghia || "").trim();
+                        const example = String(row.example || row.Example || row.vidu || "").trim();
+
+                        if (word && definition) {
+                            const isDuplicate = vocabulary.some(v => v.word.toLowerCase() === word.toLowerCase());
+                            if (!isDuplicate) {
+                                vocabulary.push({ word, pronunciation, type: type || "noun", definition, example, learned: false });
+                                addedCount++;
+                            } else { duplicateCount++; }
+                        }
+                    });
+                    
+                    saveDataToStorage();
+                    alert(`🎉 Thành công! Đã nạp thêm ${addedCount} từ vựng mới.\n🚫 Bỏ qua ${duplicateCount} từ trùng tên.`);
+                } catch (error) { alert("Lỗi định dạng file Excel!"); }
+                event.target.value = '';
+                showScreen('screen-menu');
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // --- CƠ CHẾ KHỞI TẠO VÒNG CHƠI THÔNG MINH ---
+        function autoStartSmartGame() {
+            if (vocabulary.length < 4) { alert("Vui lòng nạp tối thiểu từ 4 từ vựng tiếng Anh trở lên để hệ thống trộn đề!"); return; }
+
+            let newWords = vocabulary.filter(w => !w.learned).sort(() => Math.random() - 0.5);
+            let learnedWords = vocabulary.filter(w => w.learned).sort(() => Math.random() - 0.5);
+            
+            let selectedWords = newWords.slice(0, 15);
+            if (selectedWords.length < 50) {
+                let needed = 50 - selectedWords.length;
+                selectedWords = selectedWords.concat(learnedWords.slice(0, needed));
+            }
+
+            playedWordsInTurn = [...selectedWords];
+            wordPerformanceTracker = {};
+            playedWordsInTurn.forEach(w => {
+                wordPerformanceTracker[w.word] = { isNew: !w.learned, total: 0, correct: 0 };
+            });
+
+            gameQuestions = [];
+            while(gameQuestions.length < 50 && selectedWords.length > 0) {
+                selectedWords.forEach(w => { if(gameQuestions.length < 50) gameQuestions.push({ ...w }); });
+            }
+
+            // Đổi tên từ 'type' thành 'qType' để loại bỏ hoàn toàn xung đột dữ liệu
+            gameQuestions.forEach((q, idx) => {
+                if (idx < 17) q.qType = 1;      
+                else if (idx < 34) q.qType = 2; 
+                else q.qType = 3;               
+            });
+
+            gameQuestions.sort(() => Math.random() - 0.5);
+            currentQuestionIndex = 0;
+            currentScore = 0;
+            document.getElementById('score').innerText = currentScore;
+            showScreen('screen-gameplay');
+            loadNextQuestion();
+        }
+
+        // --- TẢI CÂU HỎI IN GAME ---
+        function loadNextQuestion() {
+            document.getElementById('example-display-box').style.display = 'none';
+            if (currentQuestionIndex >= gameQuestions.length) { endGameTurn(); return; }
+
+            document.getElementById('current-q-index').innerText = currentQuestionIndex + 1;
+            currentCorrectWord = gameQuestions[currentQuestionIndex];
+            currentQType = currentCorrectWord.qType; // Sử dụng qType mới bảo mật
+
+            if(wordPerformanceTracker[currentCorrectWord.word]) wordPerformanceTracker[currentCorrectWord.word].total += 1;
+
+            let options = [];
+            const optionsBox = document.getElementById('options-box');
+            optionsBox.innerHTML = '';
+
+            if (currentQType === 1) {
+                document.getElementById('question-type-hint').innerText = "💡 Nhấp vào từ vựng để mở câu ví dụ:";
+                document.getElementById('question-main').innerText = currentCorrectWord.word;
+                document.getElementById('question-sub').innerText = `Pronunciation: ${currentCorrectWord.pronunciation}`;
+                document.getElementById('question-main').style.cursor = "pointer";
+
+                options.push(currentCorrectWord.definition);
+                let wrong = vocabulary.filter(w => w.definition !== currentCorrectWord.definition).map(w => w.definition);
+                wrong.sort(() => Math.random() - 0.5);
+                for(let i=0; i<3 && i<wrong.length; i++) options.push(wrong[i]);
+
+            } else if (currentQType === 2) {
+                document.getElementById('question-type-hint').innerText = "💡 Chọn đúng cặp Từ & Phiên âm thích hợp với nghĩa:";
+                document.getElementById('question-main').innerText = currentCorrectWord.definition;
+                document.getElementById('question-sub').innerText = "";
+                document.getElementById('question-main').style.cursor = "default";
+
+                let makeOptStr = (item) => `${item.word} (${item.pronunciation})`;
+                options.push(makeOptStr(currentCorrectWord));
+                
+                let wrongItems = vocabulary.filter(w => w.word !== currentCorrectWord.word);
+                wrongItems.sort(() => Math.random() - 0.5);
+                for(let i=0; i<3 && i<wrongItems.length; i++) options.push(makeOptStr(wrongItems[i]));
+
+            } else if (currentQType === 3) {
+                document.getElementById('question-type-hint').innerText = "⚡ Xác định loại từ (Word Form) chính xác của từ vựng sau:";
+                document.getElementById('question-main').innerText = currentCorrectWord.word;
+                document.getElementById('question-sub').innerText = `Meaning: ${currentCorrectWord.definition}`;
+                document.getElementById('question-main').style.cursor = "default";
+
+                options.push(currentCorrectWord.type);
+                
+                // Lọc sạch các thuộc tính thừa, chỉ lấy chính xác loại từ thật từ file Excel
+                let wrongTypes = Array.from(new Set(vocabulary
+                    .map(w => String(w.type).trim())
+                    .filter(t => t !== currentCorrectWord.type && t !== "" && t !== "undefined")
+                ));
+                
+                wrongTypes.sort(() => Math.random() - 0.5);
+                for(let i=0; i<3 && i<wrongTypes.length; i++) options.push(wrongTypes[i]);
+                
+                // Backup chuẩn sư phạm phòng trường hợp file Excel nạp vào ít loại từ
+                let backupTypes = ["noun", "verb", "adjective", "adverb"];
+                while(options.length < 4) {
+                    let b = backupTypes[Math.floor(Math.random() * backupTypes.length)];
+                    if(!options.includes(b)) options.push(b);
+                    else options.push(b + " "); 
+                }
+            }
+
+            options.sort(() => Math.random() - 0.5);
+            const prefixes = ['A. ', 'B. ', 'C. ', 'D. '];
+            options.forEach((opt, index) => {
+                let isCorrect = false;
+                if (currentQType === 1) isCorrect = (opt === currentCorrectWord.definition);
+                else if (currentQType === 2) isCorrect = (opt === `${currentCorrectWord.word} (${currentCorrectWord.pronunciation})`);
+                else if (currentQType === 3) isCorrect = (opt === currentCorrectWord.type);
+
+                const button = document.createElement('button');
+                button.className = 'btn';
+                button.innerText = `${prefixes[index]}${opt}`;
+                button.onclick = function() { checkAnswer(this, isCorrect); };
+                optionsBox.appendChild(button);
+            });
+        }
+
+        function checkAnswer(button, isCorrect) {
+            document.querySelectorAll('#options-box .btn').forEach(btn => btn.style.pointerEvents = 'none');
+            if (isCorrect) {
+                button.classList.add('correct-blink'); currentScore++; document.getElementById('score').innerText = currentScore;
+                if(wordPerformanceTracker[currentCorrectWord.word]) wordPerformanceTracker[currentCorrectWord.word].correct += 1;
+            } else { button.classList.add('wrong-blink'); }
+            setTimeout(() => { currentQuestionIndex++; loadNextQuestion(); }, 900);
+        }
+
+        function toggleExampleDisplay() {
+            if (currentQType !== 1) return; 
+            const box = document.getElementById('example-display-box');
+            if (box.style.display === 'block') { box.style.display = 'none'; return; }
+            if (!currentCorrectWord.example) { box.innerHTML = "❌ No example available."; box.style.display = 'block'; return; }
+            
+            box.innerHTML = "<b>Example:</b> ";
+            renderSafeHighlightText(box, currentCorrectWord.example, currentCorrectWord.word);
+            box.style.display = 'block';
+        }
+
+        function renderSafeHighlightText(container, fullText, keyword) {
+            let regex = new RegExp(`(${keyword})`, 'gi');
+            if (regex.test(fullText)) {
+                let parts = fullText.split(regex);
+                parts.forEach(part => {
+                    if (part.toLowerCase() === keyword.toLowerCase()) {
+                        let span = document.createElement('span');
+                        span.className = 'highlight';
+                        span.textContent = part;
+                        container.appendChild(span);
+                    } else {
+                        container.appendChild(document.createTextNode(part));
+                    }
+                });
+            } else {
+                container.appendChild(document.createTextNode(fullText));
+            }
+        }
+
+        // --- MÀN HÌNH TỔNG KẾT ---
+        function endGameTurn() {
+            showScreen('screen-summary');
+            document.getElementById('summary-score-text').innerText = `Bạn đạt: ${currentScore}/${gameQuestions.length} câu đúng`;
+            const container = document.getElementById('summary-list-content');
+            container.innerHTML = '';
+
+            let uniqueWords = [];
+            playedWordsInTurn.forEach(w => { if(!uniqueWords.some(x => x.word === w.word)) uniqueWords.push(w); });
+
+            uniqueWords.forEach((word, idx) => {
+                const item = document.createElement('div');
+                item.className = 'summary-item';
+                let stats = wordPerformanceTracker[word.word];
+                let isPerfectNew = stats && stats.isNew && stats.total > 0 && stats.correct === stats.total;
+
+                if (isPerfectNew) { item.style.backgroundColor = '#E8F5E9'; item.style.border = '2px solid #4CAF50'; }
+                else { item.style.backgroundColor = '#FFFFFF'; item.style.border = '1px solid #eee'; }
+
+                const originalIndex = vocabulary.findIndex(v => v.word === word.word);
+                
+                const chk = document.createElement('input');
+                chk.type = 'checkbox';
+                chk.id = `sum-chk-${idx}`;
+                chk.setAttribute('data-origin-idx', originalIndex);
+                if (word.learned || isPerfectNew) chk.checked = true;
+
+                const lbl = document.createElement('label');
+                lbl.style.cursor = 'pointer'; lbl.style.padding = '12px'; lbl.style.flexGrow = '1';
+                lbl.style.display = 'flex'; lbl.style.alignItems = 'center'; lbl.style.justifyContent = 'space-between';
+                lbl.setAttribute('for', `sum-chk-${idx}`);
+
+                const info = document.createElement('div');
+                info.innerHTML = `<strong></strong> (${word.type}) - ${word.definition}`;
+                info.querySelector('strong').textContent = word.word;
+
+                const badge = document.createElement('span');
+                badge.className = 'status-badge';
+                if (word.learned) { badge.style.backgroundColor = '#E8F5E9'; badge.style.color = '#4CAF50'; badge.textContent = 'Đã thuộc'; }
+                else if (isPerfectNew) { badge.style.backgroundColor = '#2E7D32'; badge.style.color = 'white'; badge.textContent = 'Từ mới - Xuất sắc!'; }
+                else { badge.style.backgroundColor = '#FFF3E0'; badge.style.color = '#FB8C00'; badge.textContent = 'Từ mới'; }
+
+                lbl.appendChild(info);
+                lbl.appendChild(badge);
+                item.appendChild(chk);
+                item.appendChild(lbl);
+                container.appendChild(item);
+            });
+        }
+
+        function selectSummaryAll(status) { document.querySelectorAll('#summary-list-content input[type="checkbox"]').forEach(c => c.checked = status); }
+
+        function submitSummaryChanges() {
+            document.querySelectorAll('#summary-list-content input[type="checkbox"]').forEach(c => {
+                const idx = parseInt(c.getAttribute('data-origin-idx'));
+                if (idx >= 0 && idx < vocabulary.length) { vocabulary[idx].learned = c.checked; }
+            });
+
+            let uniqueCount = new Set(playedWordsInTurn.map(w => w.word)).size;
+            let now = new Date();
+            let dateStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+            studyLogs.unshift({ name: currentPlayerName, date: dateStr, count: uniqueCount });
+            saveDataToStorage();
+
+            alert("💾 Đã lưu tiến trình học tập thành công!");
+            showScreen('screen-menu');
+            renderLogTable();
+        }
+
+        function renderLogTable() {
+            const tbody = document.getElementById('log-table-body');
+            const emptyMsg = document.getElementById('log-empty-msg');
+            tbody.innerHTML = '';
+            if (studyLogs.length === 0) { emptyMsg.style.display = 'block'; return; }
+            emptyMsg.style.display = 'none';
+
+            studyLogs.forEach(log => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${log.name}</td><td>${log.date}</td><td><strong>${log.count} từ</strong></td>`;
+                tbody.appendChild(row);
+            });
+        }
+
+        // --- XEM VÀ QUẢN LÝ SỔ TỪ VỰNG ANH VĂN ---
+        function viewVocab(mode) {
+            currentVocabViewMode = mode; showScreen('screen-loading'); renderVocabList();
+            setTimeout(() => { showScreen('screen-vocab-list'); }, 600);
+        }
+
+        function renderVocabList() {
+            let filtered = [];
+            if (currentVocabViewMode === 'all') { filtered = [...vocabulary]; document.getElementById('vocab-list-title').innerText = "TẤT CẢ TỪ VỰNG"; }
+            else if (currentVocabViewMode === 'new') { filtered = vocabulary.filter(w => !w.learned); document.getElementById('vocab-list-title').innerText = "TỪ VỰNG MỚI CHƯA THUỘC"; }
+            else if (currentVocabViewMode === 'learned') { filtered = vocabulary.filter(w => w.learned); document.getElementById('vocab-list-title').innerText = "TỪ VỰNG ĐÃ THUỘC TỐT"; }
+
+            const container = document.getElementById('vocab-list-content'); container.innerHTML = '';
+            if (filtered.length === 0) { container.innerHTML = '<div style="text-align:center; padding:20px; color:#757575; font-style:italic;">Sổ từ vựng trống.</div>'; return; }
+
+            filtered.forEach((w, localIdx) => {
+                const globalIdx = vocabulary.findIndex(v => v.word === w.word);
+                const item = document.createElement('div');
+                item.className = `vocab-item ${w.learned ? 'status-learned' : ''}`;
+                
+                const itemMain = document.createElement('div');
+                itemMain.className = 'vocab-item-main';
+
+                const chk = document.createElement('input');
+                chk.type = 'checkbox'; chk.className = 'vocab-select-chk'; chk.setAttribute('data-global-idx', globalIdx);
+
+                const details = document.createElement('div');
+                details.className = 'vocab-details';
+                
+                const clickableWord = document.createElement('strong');
+                clickableWord.className = 'vocab-word-clickable';
+                clickableWord.textContent = w.word;
+                clickableWord.title = "Bấm để xem câu ví dụ";
+                
+                const exSubBox = document.createElement('div');
+                exSubBox.className = 'vocab-example-subbox';
+                if (w.example && w.example.trim() !== "") {
+                    exSubBox.innerHTML = "<b>Example:</b> ";
+                    renderSafeHighlightText(exSubBox, w.example, w.word);
+                } else { exSubBox.textContent = "❌ No example provided for this word."; }
+
+                clickableWord.onclick = function() {
+                    let isBlock = exSubBox.style.display === 'block';
+                    exSubBox.style.display = isBlock ? 'none' : 'block';
+                };
+
+                details.appendChild(clickableWord);
+                details.appendChild(document.createTextNode(` (${w.type}) [${w.pronunciation}] : ${w.definition}`));
+
+                const badge = document.createElement('span');
+                badge.className = 'status-badge';
+                badge.style.backgroundColor = w.learned ? '#E8F5E9' : '#FFF3E0';
+                badge.style.color = w.learned ? '#4CAF50' : '#FB8C00';
+                badge.textContent = w.learned ? 'Đã thuộc' : 'Từ mới';
+
+                details.appendChild(badge);
+                itemMain.appendChild(chk);
+                itemMain.appendChild(details);
+                
+                item.appendChild(itemMain);
+                item.appendChild(exSubBox); 
+                container.appendChild(item);
+            });
+        }
+
+        function toggleSelectAllVocab() {
+            const chks = document.querySelectorAll('.vocab-select-chk');
+            if (chks.length === 0) return;
+            const allChecked = Array.from(chks).every(c => c.checked);
+            chks.forEach(c => c.checked = !allChecked);
+        }
+
+        function deleteSelectedVocab() {
+            const chks = document.querySelectorAll('.vocab-select-chk:checked');
+            if (chks.length === 0) { alert("Vui lòng chọn từ để xóa!"); return; }
+            if (confirm(`Bạn có chắc chắn muốn xóa ${chks.length} mục đã chọn?`)) {
+                let indices = Array.from(chks).map(c => parseInt(c.getAttribute('data-global-idx'))).sort((a, b) => b - a);
+                indices.forEach(idx => { if (idx >= 0 && idx < vocabulary.length) vocabulary.splice(idx, 1); });
+                saveDataToStorage();
+                renderVocabList(); 
+            }
+        }
+
+        function deleteAllVocabMode() {
+            if (currentVocabViewMode === 'all') { if (confirm("Xóa SẠCH kho dữ liệu?")) { vocabulary = []; saveDataToStorage(); renderVocabList(); } }
+            else if (currentVocabViewMode === 'new') { if (confirm("Xóa hết từ mới?")) { vocabulary = vocabulary.filter(w => w.learned); saveDataToStorage(); renderVocabList(); } }
+            else if (currentVocabViewMode === 'learned') { if (confirm("Xóa hết từ đã thuộc?")) { vocabulary = vocabulary.filter(w => !w.learned); saveDataToStorage(); renderVocabList(); } }
+        }
+    </script>
+</body>
+</html>
